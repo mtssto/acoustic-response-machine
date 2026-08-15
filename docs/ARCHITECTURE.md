@@ -37,9 +37,10 @@ AUDIO CAPTURE → ANALYSIS → AcousticEvent → Interpretation
 - `src/machine/state.ts` — continuous MachineVitals
 - `src/memory/bank.ts` — traces + similarity recall
 - `src/learning/cluster.ts` — online clustering + reinforcement
+- `src/audio/response.ts` — structure → synth response
 - `src/environment/imageMap.ts` — image → constraint field
 - `src/main.ts` — boot + loop
 
-See `docs/GROWTH_RULES.md`, `docs/MEMORY_MODEL.md`, `docs/IMAGE_ENVIRONMENT.md`, `docs/LEARNING.md`.
+See `docs/GROWTH_RULES.md`, `docs/MEMORY_MODEL.md`, `docs/IMAGE_ENVIRONMENT.md`, `docs/LEARNING.md`, `docs/AUDIO_RESPONSE.md`.
 
 Module `F:` / `E:` values are structural simulation placeholders, not acoustic Hz/energy.

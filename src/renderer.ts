@@ -47,6 +47,9 @@ export interface HudFrame {
   clusters: ClusterModel[];
   envOverlay: EnvOverlaySeg[];
   envName: string | null;
+  responseEnabled: boolean;
+  responseSpeaking: boolean;
+  responseParams: ResponseParams | null;
   f0Confidence: number;
   spectrum: Float32Array | null;
   waveform: Float32Array | null;
@@ -202,7 +205,7 @@ export class CanvasRenderer {
     ctx.fillStyle = C.text;
     ctx.font = "11px Courier New, monospace";
     ctx.fillText(
-      "ACOUSTIC RESPONSE MACHINE  —  SYSTEM SIMULATION  v0.8.0  [LEARNING]",
+      "ACOUSTIC RESPONSE MACHINE  —  SYSTEM SIMULATION  v0.9.0  [RESPONSE]",
       18,
       22
     );
@@ -308,6 +311,16 @@ export class CanvasRenderer {
         `Memory Infl.   ${mv ? mv.memoryInfluence.toFixed(2) : "0.00"}`,
         `Pattern ID     ${mv?.patternId ?? hud.memoryClusterId ?? "—"}`,
         `Focus          ${mv?.focus ?? "LOW"}`,
+        `Response       ${
+          !hud.responseEnabled
+            ? "OFF"
+            : hud.responseSpeaking
+              ? "SPEAKING"
+              : "READY"
+        }`,
+        `Resp Hz        ${
+          hud.responseParams ? hud.responseParams.frequency.toFixed(1) : "—"
+        }`,
       ],
       false
     );
@@ -323,7 +336,11 @@ export class CanvasRenderer {
         `Length         ${gd ? gd.length.toFixed(1) : "—"}`,
         `Branch P       ${gd ? gd.branchProbability.toFixed(3) : "—"}`,
         `Frontier       ${gd ? String(gd.frontier) : "—"}`,
-        `Onset          ${gd ? gd.onset.toFixed(3) : "—"}`,
+        `Harm/Tex       ${
+          hud.responseParams
+            ? `${hud.responseParams.harmonicity.toFixed(2)}/${hud.responseParams.texture.toFixed(2)}`
+            : "—"
+        }`,
         ...hud.logLines.slice(-3),
       ],
       false

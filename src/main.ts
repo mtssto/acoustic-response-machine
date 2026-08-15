@@ -328,6 +328,14 @@ window.addEventListener("keydown", (e) => {
     e.preventDefault();
     fileInput.click();
   }
+  if (e.key === "r" || e.key === "R") {
+    e.preventDefault();
+    response.setEnabled(!response.enabled);
+    pushLog(
+      response.enabled ? "RESPONSE ON" : "RESPONSE OFF",
+      (performance.now() - t0) / 1000
+    );
+  }
   if (e.key === "Escape" && environment.active) {
     environment.clear();
     growth.setEnvironment(null);
