@@ -1,6 +1,7 @@
 import { AcousticAnalyzer } from "./audio/analysis";
 import { AudioCapture } from "./audio/capture";
 import { EventInterpreter } from "./audio/interpret";
+import { MachineResponse } from "./audio/response";
 import { ImageEnvironment } from "./environment/imageMap";
 import { createGrowthSeed, GrowthEngine } from "./growth/engine";
 import { MachineState } from "./machine/state";
@@ -26,6 +27,7 @@ const growth = new GrowthEngine();
 const machine = new MachineState();
 const memory = new MemoryBank();
 const environment = new ImageEnvironment();
+const response = new MachineResponse();
 
 const fileInput = document.createElement("input");
 fileInput.type = "file";
@@ -59,7 +61,7 @@ let lastPtr = { x: 0, y: 0 };
 const logLines: string[] = [
   "00:00:00  FOUNDATION BOOT",
   "00:00:00  ENV: DROP IMAGE OR PRESS I",
-  "00:00:00  AUDIO OFFLINE",
+  "00:00:00  RESPONSE: KEY R TOGGLE",
   "00:00:00  CLICK TO ENABLE MIC",
 ];
 
@@ -104,6 +106,7 @@ function rebuild() {
   growth.reset(scene, seed.bounds);
   machine.reset();
   memory.reset();
+  response.reset();
   const root = scene.elements.find((e) => e.kind === "root");
   if (root) {
     renderer.camera.x = root.x;
@@ -138,7 +141,7 @@ function toggleMic() {
   pushLog("MIC REQUEST", t);
   void capture.start().then(() => {
     const t2 = (performance.now() - t0) / 1000;
-    if (capture.status === "LIVE") pushLog("AUDIO LIVE — MEMORY ACTIVE", t2);
+    if (capture.status === "LIVE") pushLog("AUDIO LIVE — RESPONSE READY", t2);
     else pushLog(`AUDIO ERROR`, t2);
   });
 }
@@ -214,6 +217,15 @@ function frame(now: number) {
     memBias.clusterId
   );
 
+  response.tick(dt);
+  if (raw && response.maybeRespond(event, structural, scene, vitals)) {
+    const p = response.lastParams;
+    pushLog(
+      `RESPONSE ${p ? `${p.frequency.toFixed(0)}Hz` : ""}`,
+      t
+    );
+  }
+
   if (followGrowth && !dragging) {
     const focus = growth.getFocusPoint();
     renderer.camera.x += (focus.x - renderer.camera.x) * 0.05;
@@ -241,6 +253,9 @@ function frame(now: number) {
     clusters: memory.clusters(),
     envOverlay: environment.active ? environment.overlay : [],
     envName: environment.active ? environment.name : null,
+    responseEnabled: response.enabled,
+    responseSpeaking: response.speaking,
+    responseParams: response.lastParams,
     f0Confidence,
     spectrum,
     waveform,

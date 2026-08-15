@@ -1,3 +1,4 @@
+import type { ResponseParams } from "./audio/response";
 import type { ClusterModel } from "./learning/cluster";
 import type { EnvOverlaySeg } from "./environment/imageMap";
 import type { GrowthDebug } from "./growth/engine";
@@ -172,7 +173,7 @@ export class CanvasRenderer {
     ctx.font = "9px Courier New, monospace";
     ctx.textAlign = "right";
     ctx.fillText(
-      "DRAG PAN  ·  WHEEL ZOOM  ·  CLICK MIC  ·  DROP IMAGE / KEY I",
+      "DRAG PAN · WHEEL ZOOM · CLICK MIC · DROP/I IMAGE · R RESPONSE",
       width - 48,
       height * 0.74
     );

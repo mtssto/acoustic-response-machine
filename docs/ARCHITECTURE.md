@@ -17,6 +17,7 @@ AUDIO CAPTURE → ANALYSIS → AcousticEvent → Interpretation
 | MachineState / MachineVitals | Continuous internal state | Phase 5 |
 | MemoryBank | Compact traces + similarity | Phase 6 |
 | PatternLearner | Online clusters + action reinforcement | Phase 8 |
+| MachineResponse | Structure → synth call-response | Phase 9 |
 | ImageEnvironment | Edge/direction constraint field | Phase 7 |
 | StructureScene | SquareNode, Junction, Marker, Module, Connection, Root | Phase 1–4 |
 | Renderer | Grid + technical primitives + HUD | Phase 1–5 |
