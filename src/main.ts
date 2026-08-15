@@ -162,6 +162,7 @@ function frame(now: number) {
     branchBoost: 0,
     lengthScale: 1,
     matchId: null as string | null,
+    clusterId: null as string | null,
     similarity: 0,
   };
 
@@ -189,15 +190,15 @@ function frame(now: number) {
       lastLoggedAction = structural.action;
     }
     if (
-      memBias.matchId &&
+      (memBias.clusterId || memBias.matchId) &&
       memBias.influence > 0.35 &&
-      memBias.matchId !== lastLoggedMemory
+      (memBias.clusterId ?? memBias.matchId) !== lastLoggedMemory
     ) {
       pushLog(
-        `MEMORY ${memBias.matchId} SIM ${memBias.similarity.toFixed(2)}`,
+        `LEARN ${(memBias.clusterId ?? memBias.matchId)!} SIM ${memBias.similarity.toFixed(2)}`,
         t
       );
-      lastLoggedMemory = memBias.matchId;
+      lastLoggedMemory = memBias.clusterId ?? memBias.matchId;
     }
   } else {
     structural = growth.step(scene, null, dt, null);
@@ -209,7 +210,8 @@ function frame(now: number) {
     event,
     structural,
     counts,
-    memBias.influence
+    memBias.influence,
+    memBias.clusterId
   );
 
   if (followGrowth && !dragging) {
@@ -234,7 +236,9 @@ function frame(now: number) {
     growthDebug: growth.debug,
     memoryTraces: memory.list(),
     memoryMatchId: memory.lastMatch.trace?.id ?? null,
+    memoryClusterId: memory.lastMatch.cluster?.id ?? memBias.clusterId,
     memorySimilarity: memory.lastMatch.similarity,
+    clusters: memory.clusters(),
     envOverlay: environment.active ? environment.overlay : [],
     envName: environment.active ? environment.name : null,
     f0Confidence,

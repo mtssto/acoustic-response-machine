@@ -1,3 +1,4 @@
+import type { ClusterModel } from "./learning/cluster";
 import type { EnvOverlaySeg } from "./environment/imageMap";
 import type { GrowthDebug } from "./growth/engine";
 import type { MachineVitals } from "./machine/state";
@@ -40,7 +41,9 @@ export interface HudFrame {
   growthDebug: GrowthDebug | null;
   memoryTraces: MemoryTrace[];
   memoryMatchId: string | null;
+  memoryClusterId: string | null;
   memorySimilarity: number;
+  clusters: ClusterModel[];
   envOverlay: EnvOverlaySeg[];
   envName: string | null;
   f0Confidence: number;
@@ -198,7 +201,7 @@ export class CanvasRenderer {
     ctx.fillStyle = C.text;
     ctx.font = "11px Courier New, monospace";
     ctx.fillText(
-      "ACOUSTIC RESPONSE MACHINE  —  SYSTEM SIMULATION  v0.7.0  [ENVIRONMENT]",
+      "ACOUSTIC RESPONSE MACHINE  —  SYSTEM SIMULATION  v0.8.0  [LEARNING]",
       18,
       22
     );
@@ -302,6 +305,7 @@ export class CanvasRenderer {
         `Growth         ${mv ? mv.growth.toFixed(2) : "0.00"}`,
         `Density        ${mv ? mv.density.toFixed(2) : "0.00"}`,
         `Memory Infl.   ${mv ? mv.memoryInfluence.toFixed(2) : "0.00"}`,
+        `Pattern ID     ${mv?.patternId ?? hud.memoryClusterId ?? "—"}`,
         `Focus          ${mv?.focus ?? "LOW"}`,
       ],
       false
@@ -459,15 +463,34 @@ export class CanvasRenderer {
   ) {
     const { ctx } = this;
     const traces = hud.memoryTraces ?? [];
-    if (traces.length === 0) {
-      ctx.fillStyle = C.textDim;
-      ctx.font = "9px Courier New, monospace";
-      ctx.fillText("WAITING PATTERN MEMORY", x, y + 8);
-      return;
-    }
+    const clusters = hud.clusters ?? [];
     ctx.font = "9px Courier New, monospace";
     let yy = y;
-    for (let i = 0; i < Math.min(traces.length, 5); i++) {
+
+    if (clusters.length) {
+      ctx.fillStyle = C.text;
+      ctx.fillText("CLUSTERS", x, yy + 8);
+      yy += 14;
+      for (let i = 0; i < Math.min(clusters.length, 3); i++) {
+        const c = clusters[i];
+        const hit = c.id === hud.memoryClusterId;
+        ctx.fillStyle = hit ? C.accent : C.textDim;
+        const act = Object.entries(c.actionVotes).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))[0];
+        ctx.fillText(
+          `${c.id}  n=${c.count}  ${c.dominantType.slice(0, 4)}  ${act ? act[0].slice(0, 6) : "—"}  R${c.reward.toFixed(1)}`,
+          x,
+          yy + 8
+        );
+        yy += 13;
+      }
+    }
+
+    if (traces.length === 0) {
+      ctx.fillStyle = C.textDim;
+      ctx.fillText(clusters.length ? "NO INSTANCE TRACES" : "WAITING PATTERN MEMORY", x, yy + 8);
+      return;
+    }
+    for (let i = 0; i < Math.min(traces.length, 3); i++) {
       const t = traces[i];
       const hit = t.id === hud.memoryMatchId;
       ctx.fillStyle = hit ? C.accent : C.textDim;
@@ -476,11 +499,11 @@ export class CanvasRenderer {
           ? hud.memorySimilarity.toFixed(2)
           : "—";
       ctx.fillText(
-        `${t.id}  ${t.type.slice(0, 4)}  SIM ${sim}  USES ${String(t.uses).padStart(2)}`,
+        `${t.id} ${t.clusterId ?? "—"} SIM ${sim} U${String(t.uses).padStart(2)}`,
         x,
         yy + 8
       );
-      yy += 14;
+      yy += 13;
     }
   }
 

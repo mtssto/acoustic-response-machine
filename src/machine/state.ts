@@ -17,6 +17,7 @@ export interface MachineVitals {
   growth: number;
   density: number;
   memoryInfluence: number;
+  patternId: string;
   currentEvent: AcousticEventType | "NONE";
   currentAction: StructuralAction;
   structuralNodes: number;
@@ -33,6 +34,7 @@ export class MachineState {
     growth: 0,
     density: 0,
     memoryInfluence: 0,
+    patternId: "—",
     currentEvent: "NONE",
     currentAction: "IDLE",
     structuralNodes: 0,
@@ -66,6 +68,7 @@ export class MachineState {
       growth: 0,
       density: 0,
       memoryInfluence: 0,
+      patternId: "—",
       currentEvent: "NONE",
       currentAction: "IDLE",
       structuralNodes: 0,
@@ -81,7 +84,8 @@ export class MachineState {
     ev: AcousticEvent | null,
     st: StructuralEvent | null,
     counts: StructureCounts,
-    memoryInfluenceExternal?: number
+    memoryInfluenceExternal?: number,
+    patternIdExternal?: string | null
   ): MachineVitals {
     const targetEnergy = ev
       ? clamp01(
@@ -151,13 +155,14 @@ export class MachineState {
       growth: round3(this.growth),
       density: round3(this.density),
       memoryInfluence: round3(this.memoryInfluence),
+      patternId: patternIdExternal && patternIdExternal.length ? patternIdExternal : "—",
       currentEvent: ev?.type ?? "NONE",
       currentAction: st?.action ?? "IDLE",
       structuralNodes: counts.nodes,
       structuralEdges: counts.edges,
       focus,
       behavior: behavior(ev, st, this.energy, this.stability),
-      mode: "MACHINE",
+      mode: patternIdExternal ? "LEARNING" : "MACHINE",
     };
     return this.vitals;
   }

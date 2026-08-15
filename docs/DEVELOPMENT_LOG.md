@@ -1,24 +1,19 @@
 # Development Log
 
+## Phase 8 — Learning
+- **Date:** 2026-08-15
+- **Changes:** `PatternLearner` online clustering of 5D acoustic embeddings; action reinforcement per cluster; MemoryBank blends instance + cluster recall; MEMORY BANK shows clusters; Pattern ID in MACHINE STATE.
+- **Result:** Repeated acoustic families converge on shared structural preferences.
+- **Problems:** None blocking.
+- **Next:** Phase 9 — machine audio response (structure → synth params).
+
 ## Phase 7 — Image as Environment
 - **Date:** 2026-08-15
-- **Changes:** `ImageEnvironment` Sobel edge/direction/interest field; growth biased by constraints; faint tangent overlay (not photo BG); drop image or press I; Esc clears.
-- **Result:** Optional image steers structure along edges/contours.
-- **Problems:** None blocking.
-- **Next:** Phase 8 — evaluate small ML only if a concrete need appears; else Phase 9 audio response later.
+- **Next:** Phase 8.
 
 ## Phase 6 — Memory
 - **Date:** 2026-08-15
-- **Changes:** Explainable MemoryBank + growth bias.
 - **Next:** Phase 7.
 
-## Phase 5 — Machine State
-- **Date:** 2026-08-15
-- **Next:** Phase 6.
-
-## Phase 4 — Growth Engine
-- **Date:** 2026-08-15
-- **Next:** Phase 5.
-
-## Phase 3–1
+## Phase 5–1
 - See prior entries.
