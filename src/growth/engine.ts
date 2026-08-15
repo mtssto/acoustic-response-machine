@@ -126,7 +126,17 @@ export class GrowthEngine {
     return this.lastFocus;
   }
 
-  step(scene: StructureScene, ev: AcousticEvent | null, dt: number): StructuralEvent {
+  step(
+    scene: StructureScene,
+    ev: AcousticEvent | null,
+    dt: number,
+    memory?: {
+      influence: number;
+      preferredAction: StructuralAction | null;
+      branchBoost: number;
+      lengthScale: number;
+    } | null
+  ): StructuralEvent {
     this.cooldown = Math.max(0, this.cooldown - dt);
     for (const ep of this.frontier) ep.age += dt;
 
@@ -219,6 +229,9 @@ export class GrowthEngine {
       return this.lastStructural;
     }
 
+    const mem = memory ?? null;
+    const memInf = mem?.influence ?? 0;
+
     const branchP = clamp01(
       0.04 +
         energy * 0.28 +
@@ -226,7 +239,8 @@ export class GrowthEngine {
         centroidN * 0.14 +
         noise * 0.12 -
         harm * 0.08 +
-        (rnd(this.tick) - 0.5) * 0.1
+        (rnd(this.tick) - 0.5) * 0.1 +
+        (mem?.branchBoost ?? 0)
     );
 
     const ep = this.pickEndpoint(strength, onset);
@@ -235,19 +249,20 @@ export class GrowthEngine {
       centroidN * 1.1 +
       (1 - harm) * 0.55 +
       noise * 0.45 +
-      (ev.type === "IMPACT" || ev.type === "TRANSIENT" ? 0.5 : 0);
-    // Bounded stochastic turn — continuity + variation (no forced UP)
-    const turn = (rnd(this.tick + 3) - 0.5) * 2 * turnMax;
+      (ev.type === "IMPACT" || ev.type === "TRANSIENT" ? 0.5 : 0) -
+      memInf * 0.15; // remembered patterns → slightly more coherent turns
+    const turn = (rnd(this.tick + 3) - 0.5) * 2 * Math.max(0.2, turnMax);
     const angle = ep.angle + turn;
 
     const length =
-      10 +
-      strength * 48 +
-      onset * 22 +
-      (1 - centroidN) * 8 +
-      rnd(this.tick + 5) * 10;
+      (10 +
+        strength * 48 +
+        onset * 22 +
+        (1 - centroidN) * 8 +
+        rnd(this.tick + 5) * 10) *
+      (mem?.lengthScale ?? 1);
 
-    const action: StructuralAction =
+    let action: StructuralAction =
       (ev.type === "IMPACT" || ev.type === "TRANSIENT") && rnd(this.tick + 7) < branchP
         ? "BRANCH"
         : rnd(this.tick + 8) < branchP
@@ -255,6 +270,11 @@ export class GrowthEngine {
           : strength > 0.45
             ? "CREATE_NODE"
             : "GROW_EDGE";
+
+    // Recalled behavior biases action when similarity is strong
+    if (mem?.preferredAction && memInf > 0.45 && rnd(this.tick + 9) < memInf) {
+      action = mem.preferredAction;
+    }
 
     this.lastStructural = {
       action,

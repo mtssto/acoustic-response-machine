@@ -3,6 +3,7 @@ import { AudioCapture } from "./audio/capture";
 import { EventInterpreter } from "./audio/interpret";
 import { createGrowthSeed, GrowthEngine } from "./growth/engine";
 import { MachineState } from "./machine/state";
+import { MemoryBank } from "./memory/bank";
 import { CanvasRenderer } from "./renderer";
 import {
   countStructure,
@@ -22,6 +23,7 @@ const analyzer = new AcousticAnalyzer();
 const interpreter = new EventInterpreter();
 const growth = new GrowthEngine();
 const machine = new MachineState();
+const memory = new MemoryBank();
 
 let scene: StructureScene = { elements: [], connections: [], ghosts: [] };
 const t0 = performance.now();
@@ -35,6 +37,7 @@ let event: AcousticEvent | null = null;
 let structural: StructuralEvent | null = null;
 let lastLoggedType: string | null = null;
 let lastLoggedAction: string | null = null;
+let lastLoggedMemory: string | null = null;
 let f0Confidence = 0;
 let spectrum: Float32Array | null = null;
 let waveform: Float32Array | null = null;
@@ -47,7 +50,7 @@ let lastPtr = { x: 0, y: 0 };
 
 const logLines: string[] = [
   "00:00:00  FOUNDATION BOOT",
-  "00:00:00  MACHINE STATE ONLINE",
+  "00:00:00  MEMORY BANK READY",
   "00:00:00  AUDIO OFFLINE",
   "00:00:00  CLICK TO ENABLE MIC",
 ];
@@ -63,6 +66,7 @@ function rebuild() {
   scene = seed.scene;
   growth.reset(scene, seed.bounds);
   machine.reset();
+  memory.reset();
   const root = scene.elements.find((e) => e.kind === "root");
   if (root) {
     renderer.camera.x = root.x;
@@ -70,6 +74,7 @@ function rebuild() {
     renderer.camera.zoom = 1;
   }
   followGrowth = false;
+  lastLoggedMemory = null;
 }
 
 function toggleMic() {
@@ -94,7 +99,7 @@ function toggleMic() {
   pushLog("MIC REQUEST", t);
   void capture.start().then(() => {
     const t2 = (performance.now() - t0) / 1000;
-    if (capture.status === "LIVE") pushLog("AUDIO LIVE — EVENT GROWTH", t2);
+    if (capture.status === "LIVE") pushLog("AUDIO LIVE — MEMORY ACTIVE", t2);
     else pushLog(`AUDIO ERROR`, t2);
   });
 }
@@ -112,6 +117,15 @@ function frame(now: number) {
 
   const t = (now - t0) / 1000;
   const raw = capture.read();
+  let memBias = {
+    influence: 0,
+    preferredAction: null as import("./types").StructuralAction | null,
+    branchBoost: 0,
+    lengthScale: 1,
+    matchId: null as string | null,
+    similarity: 0,
+  };
+
   if (raw) {
     const result = analyzer.analyze(raw.time, raw.freqDb, raw.sampleRate);
     measurement = result.measurement;
@@ -120,7 +134,12 @@ function frame(now: number) {
     waveform = result.waveform;
     onsetHistory = result.onsetHistory;
     event = interpreter.interpret(measurement, t);
-    structural = growth.step(scene, event, dt);
+    memBias = memory.recall(event);
+    structural = growth.step(scene, event, dt, memBias);
+
+    if (structural.action !== "IDLE" && structural.action !== "DECAY") {
+      memory.remember(event, structural);
+    }
 
     if (event.type !== lastLoggedType) {
       pushLog(`EVENT: ${event.type} (${event.confidence.toFixed(2)})`, t);
@@ -130,12 +149,29 @@ function frame(now: number) {
       pushLog(`ACTION: ${structural.action}`, t);
       lastLoggedAction = structural.action;
     }
+    if (
+      memBias.matchId &&
+      memBias.influence > 0.35 &&
+      memBias.matchId !== lastLoggedMemory
+    ) {
+      pushLog(
+        `MEMORY ${memBias.matchId} SIM ${memBias.similarity.toFixed(2)}`,
+        t
+      );
+      lastLoggedMemory = memBias.matchId;
+    }
   } else {
-    structural = growth.step(scene, null, dt);
+    structural = growth.step(scene, null, dt, null);
   }
 
   const counts = countStructure(scene, growth.getMeters());
-  const vitals = machine.update(dt, event, structural, counts);
+  const vitals = machine.update(
+    dt,
+    event,
+    structural,
+    counts,
+    memBias.influence
+  );
 
   if (followGrowth && !dragging) {
     const focus = growth.getFocusPoint();
@@ -157,6 +193,9 @@ function frame(now: number) {
     structural,
     machine: vitals,
     growthDebug: growth.debug,
+    memoryTraces: memory.list(),
+    memoryMatchId: memory.lastMatch.trace?.id ?? null,
+    memorySimilarity: memory.lastMatch.similarity,
     f0Confidence,
     spectrum,
     waveform,

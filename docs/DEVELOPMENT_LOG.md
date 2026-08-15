@@ -1,15 +1,19 @@
 # Development Log
 
+## Phase 6 — Memory
+- **Date:** 2026-08-15
+- **Changes:** `MemoryBank` stores compact event traces; explainable similarity recall biases growth (branch/length/action); MEMORY BANK HUD live; machine memoryInfluence from real matches.
+- **Result:** Repeated patterns show SIM/USES and related structural responses.
+- **Problems:** None blocking.
+- **Next:** Phase 7 — Image as environment (optional) or Phase 8 learning evaluation.
+
 ## Phase 5 — Machine State
 - **Date:** 2026-08-15
-- **Changes:** `MachineState` continuous vitals (energy, stability, growth, density, memoryInfluence) smoothed from acoustic + structural behavior. HUD MACHINE STATE shows current event/action/behavior/focus. memoryInfluence = lightweight type recurrence (not Phase-6 store).
-- **Result:** Machine holds continuous internal state between events.
-- **Problems:** None blocking.
-- **Next:** Phase 6 — Memory (compact event history + similarity).
+- **Changes:** Continuous MachineVitals.
+- **Next:** Phase 6.
 
 ## Phase 4 — Growth Engine (organic correction)
 - **Date:** 2026-08-15
-- **Changes:** Event-driven frontier growth; no permanent spine.
 - **Next:** Phase 5.
 
 ## Phase 3 — Acoustic Events

@@ -1,5 +1,6 @@
 import type { GrowthDebug } from "./growth/engine";
 import type { MachineVitals } from "./machine/state";
+import type { MemoryTrace } from "./memory/bank";
 import type {
   AcousticEvent,
   AcousticMeasurement,
@@ -36,6 +37,9 @@ export interface HudFrame {
   structural: StructuralEvent | null;
   machine: MachineVitals | null;
   growthDebug: GrowthDebug | null;
+  memoryTraces: MemoryTrace[];
+  memoryMatchId: string | null;
+  memorySimilarity: number;
   f0Confidence: number;
   spectrum: Float32Array | null;
   waveform: Float32Array | null;
@@ -172,7 +176,7 @@ export class CanvasRenderer {
     ctx.fillStyle = C.text;
     ctx.font = "11px Courier New, monospace";
     ctx.fillText(
-      "ACOUSTIC RESPONSE MACHINE  —  SYSTEM SIMULATION  v0.5.0  [MACHINE]",
+      "ACOUSTIC RESPONSE MACHINE  —  SYSTEM SIMULATION  v0.6.0  [MEMORY]",
       18,
       22
     );
@@ -397,22 +401,65 @@ export class CanvasRenderer {
       ctx.fillStyle = C.textDim;
       ctx.font = "9px Courier New, monospace";
       ctx.fillText(labels[i], x + 8, y + 14);
-      ctx.fillStyle = live && i < 3 ? C.accent : "rgba(100, 120, 120, 0.45)";
-      ctx.fillText(live && i < 3 ? "LIVE" : "OFFLINE", x + 8, y + 30);
+      const status =
+        i < 3
+          ? live
+            ? "LIVE"
+            : "OFFLINE"
+          : i === 3
+            ? (hud.memoryTraces?.length ?? 0) > 0
+              ? "ACTIVE"
+              : "EMPTY"
+            : "OFFLINE";
+      ctx.fillStyle =
+        status === "LIVE" || status === "ACTIVE"
+          ? C.accent
+          : "rgba(100, 120, 120, 0.45)";
+      ctx.fillText(status, x + 8, y + 30);
 
       if (i === 0) this.drawSpectrum(x + 8, y + 40, w - 16, h - 52, hud.spectrum);
       else if (i === 1) this.drawWave(x + 8, y + 40, w - 16, h - 52, hud.waveform);
       else if (i === 2) this.drawOnsets(x + 8, y + 40, w - 16, h - 52, hud.onsetHistory);
-      else if (i === 3) {
-        ctx.fillStyle = C.textDim;
-        ctx.fillText("# ----  SIM —  USES —", x + 8, y + 48);
-        ctx.fillText("# ----  SIM —  USES —", x + 8, y + 62);
-        ctx.fillText("WAITING PATTERN MEMORY", x + 8, y + 80);
-      } else {
+      else if (i === 3) this.drawMemoryBank(x + 8, y + 40, w - 16, h - 48, hud);
+      else {
         this.stubPattern(x + 8, y + 40, w - 16, h - 52);
       }
     }
     ctx.restore();
+  }
+
+  private drawMemoryBank(
+    x: number,
+    y: number,
+    _w: number,
+    _h: number,
+    hud: HudFrame
+  ) {
+    const { ctx } = this;
+    const traces = hud.memoryTraces ?? [];
+    if (traces.length === 0) {
+      ctx.fillStyle = C.textDim;
+      ctx.font = "9px Courier New, monospace";
+      ctx.fillText("WAITING PATTERN MEMORY", x, y + 8);
+      return;
+    }
+    ctx.font = "9px Courier New, monospace";
+    let yy = y;
+    for (let i = 0; i < Math.min(traces.length, 5); i++) {
+      const t = traces[i];
+      const hit = t.id === hud.memoryMatchId;
+      ctx.fillStyle = hit ? C.accent : C.textDim;
+      const sim =
+        hit && hud.memorySimilarity > 0
+          ? hud.memorySimilarity.toFixed(2)
+          : "—";
+      ctx.fillText(
+        `${t.id}  ${t.type.slice(0, 4)}  SIM ${sim}  USES ${String(t.uses).padStart(2)}`,
+        x,
+        yy + 8
+      );
+      yy += 14;
+    }
   }
 
   private drawSpectrum(

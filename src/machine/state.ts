@@ -80,7 +80,8 @@ export class MachineState {
     dt: number,
     ev: AcousticEvent | null,
     st: StructuralEvent | null,
-    counts: StructureCounts
+    counts: StructureCounts,
+    memoryInfluenceExternal?: number
   ): MachineVitals {
     const targetEnergy = ev
       ? clamp01(
@@ -116,8 +117,12 @@ export class MachineState {
     this.stability +=
       (clamp01(stabilityTarget) - this.stability) * Math.min(1, 1.8 * dt);
 
-    // Lightweight recurrence (not Phase-6 memory store)
-    if (ev && ev.type !== "SILENCE") {
+    // Phase 6: prefer real similarity influence when provided
+    if (memoryInfluenceExternal != null) {
+      this.memoryInfluence +=
+        (clamp01(memoryInfluenceExternal) - this.memoryInfluence) *
+        Math.min(1, 3 * dt);
+    } else if (ev && ev.type !== "SILENCE") {
       if (ev.type === this.lastType) this.typeStreak += dt;
       else {
         this.typeStreak = dt;
