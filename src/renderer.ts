@@ -1,3 +1,4 @@
+import type { EnvOverlaySeg } from "./environment/imageMap";
 import type { GrowthDebug } from "./growth/engine";
 import type { MachineVitals } from "./machine/state";
 import type { MemoryTrace } from "./memory/bank";
@@ -40,6 +41,8 @@ export interface HudFrame {
   memoryTraces: MemoryTrace[];
   memoryMatchId: string | null;
   memorySimilarity: number;
+  envOverlay: EnvOverlaySeg[];
+  envName: string | null;
   f0Confidence: number;
   spectrum: Float32Array | null;
   waveform: Float32Array | null;
@@ -121,9 +124,24 @@ export class CanvasRenderer {
     this.endWorld();
   }
 
-  drawScene(scene: StructureScene, t: number) {
+  drawScene(scene: StructureScene, t: number, envOverlay: EnvOverlaySeg[] = []) {
     const { ctx } = this;
     this.beginWorld();
+
+    // Environment edge field (constraints map — not photographic background)
+    if (envOverlay.length) {
+      ctx.save();
+      for (const s of envOverlay) {
+        ctx.strokeStyle = `rgba(90, 160, 170, ${s.a})`;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(s.x0, s.y0);
+        ctx.lineTo(s.x1, s.y1);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     ctx.fillStyle = "rgba(90, 160, 150, 0.08)";
     for (const g of scene.ghosts) {
       ctx.fillRect(g.x, g.y, g.s, g.s);
@@ -141,20 +159,24 @@ export class CanvasRenderer {
     this.drawRightScale();
     this.drawBottomAnalyzers(hud);
     if (hud.hint) this.drawHint(hud.hint);
-    this.drawMapHelp();
+    this.drawMapHelp(hud.envName);
   }
 
-  private drawMapHelp() {
+  private drawMapHelp(envName: string | null) {
     const { ctx, width, height } = this;
     ctx.save();
     ctx.fillStyle = C.textDim;
     ctx.font = "9px Courier New, monospace";
     ctx.textAlign = "right";
     ctx.fillText(
-      "DRAG PAN  ·  WHEEL ZOOM  ·  CLICK MIC",
+      "DRAG PAN  ·  WHEEL ZOOM  ·  CLICK MIC  ·  DROP IMAGE / KEY I",
       width - 48,
       height * 0.74
     );
+    if (envName) {
+      ctx.fillStyle = C.accent;
+      ctx.fillText(`ENV  ${envName.slice(0, 28)}`, width - 48, height * 0.74 - 14);
+    }
     ctx.textAlign = "left";
     ctx.restore();
   }
@@ -176,7 +198,7 @@ export class CanvasRenderer {
     ctx.fillStyle = C.text;
     ctx.font = "11px Courier New, monospace";
     ctx.fillText(
-      "ACOUSTIC RESPONSE MACHINE  —  SYSTEM SIMULATION  v0.6.0  [MEMORY]",
+      "ACOUSTIC RESPONSE MACHINE  —  SYSTEM SIMULATION  v0.7.0  [ENVIRONMENT]",
       18,
       22
     );

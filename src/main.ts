@@ -1,6 +1,7 @@
 import { AcousticAnalyzer } from "./audio/analysis";
 import { AudioCapture } from "./audio/capture";
 import { EventInterpreter } from "./audio/interpret";
+import { ImageEnvironment } from "./environment/imageMap";
 import { createGrowthSeed, GrowthEngine } from "./growth/engine";
 import { MachineState } from "./machine/state";
 import { MemoryBank } from "./memory/bank";
@@ -24,6 +25,13 @@ const interpreter = new EventInterpreter();
 const growth = new GrowthEngine();
 const machine = new MachineState();
 const memory = new MemoryBank();
+const environment = new ImageEnvironment();
+
+const fileInput = document.createElement("input");
+fileInput.type = "file";
+fileInput.accept = "image/*";
+fileInput.style.display = "none";
+app.appendChild(fileInput);
 
 let scene: StructureScene = { elements: [], connections: [], ghosts: [] };
 const t0 = performance.now();
@@ -50,7 +58,7 @@ let lastPtr = { x: 0, y: 0 };
 
 const logLines: string[] = [
   "00:00:00  FOUNDATION BOOT",
-  "00:00:00  MEMORY BANK READY",
+  "00:00:00  ENV: DROP IMAGE OR PRESS I",
   "00:00:00  AUDIO OFFLINE",
   "00:00:00  CLICK TO ENABLE MIC",
 ];
@@ -59,6 +67,35 @@ function pushLog(msg: string, runtimeSec: number) {
   const stamp = formatTime(runtimeSec);
   logLines.push(`${stamp}  ${msg}`);
   if (logLines.length > 8) logLines.shift();
+}
+
+function placeEnvironment() {
+  const root = scene.elements.find((e) => e.kind === "root");
+  const cx = root?.x ?? renderer.width * 0.55;
+  const cy = root?.y ?? renderer.height * 0.55;
+  const size = Math.min(renderer.width, renderer.height) * 0.85;
+  environment.setWorldAround(cx, cy, size);
+  growth.setEnvironment(environment.active ? environment : null);
+}
+
+async function loadEnvironmentFile(file: File) {
+  const t = (performance.now() - t0) / 1000;
+  const root = scene.elements.find((e) => e.kind === "root");
+  const cx = root?.x ?? renderer.width * 0.55;
+  const cy = root?.y ?? renderer.height * 0.55;
+  const size = Math.min(renderer.width, renderer.height) * 0.85;
+  try {
+    await environment.loadFile(file, {
+      x: cx - size / 2,
+      y: cy - size / 2,
+      w: size,
+      h: size,
+    });
+    growth.setEnvironment(environment);
+    pushLog(`ENV LOADED ${file.name.slice(0, 18)}`, t);
+  } catch {
+    pushLog("ENV LOAD FAILED", t);
+  }
 }
 
 function rebuild() {
@@ -73,6 +110,8 @@ function rebuild() {
     renderer.camera.y = root.y;
     renderer.camera.zoom = 1;
   }
+  if (environment.active) placeEnvironment();
+  else growth.setEnvironment(null);
   followGrowth = false;
   lastLoggedMemory = null;
 }
@@ -181,7 +220,7 @@ function frame(now: number) {
 
   renderer.clear();
   renderer.drawGrid();
-  renderer.drawScene(scene, t);
+  renderer.drawScene(scene, t, environment.active ? environment.overlay : []);
   renderer.drawInstrument({
     counts,
     runtimeSec: t,
@@ -196,6 +235,8 @@ function frame(now: number) {
     memoryTraces: memory.list(),
     memoryMatchId: memory.lastMatch.trace?.id ?? null,
     memorySimilarity: memory.lastMatch.similarity,
+    envOverlay: environment.active ? environment.overlay : [],
+    envName: environment.active ? environment.name : null,
     f0Confidence,
     spectrum,
     waveform,
@@ -203,7 +244,7 @@ function frame(now: number) {
     logLines,
     hint:
       capture.status === "OFFLINE" || capture.status === "ERROR"
-        ? "CLICK MIC · DRAG PAN · WHEEL ZOOM · DBLCLICK FOLLOW"
+        ? "CLICK MIC · DROP IMAGE / I · DRAG PAN · WHEEL ZOOM"
         : capture.status === "REQUESTING"
           ? "REQUESTING MICROPHONE…"
           : null,
@@ -255,6 +296,34 @@ canvas.addEventListener("dblclick", (e) => {
   e.preventDefault();
   followGrowth = true;
   pushLog("FOLLOW GROWTH", (performance.now() - t0) / 1000);
+});
+
+fileInput.addEventListener("change", () => {
+  const f = fileInput.files?.[0];
+  if (f) void loadEnvironmentFile(f);
+  fileInput.value = "";
+});
+
+window.addEventListener("keydown", (e) => {
+  if (e.key === "i" || e.key === "I") {
+    e.preventDefault();
+    fileInput.click();
+  }
+  if (e.key === "Escape" && environment.active) {
+    environment.clear();
+    growth.setEnvironment(null);
+    pushLog("ENV CLEARED", (performance.now() - t0) / 1000);
+  }
+});
+
+canvas.addEventListener("dragover", (e) => {
+  e.preventDefault();
+});
+
+canvas.addEventListener("drop", (e) => {
+  e.preventDefault();
+  const f = e.dataTransfer?.files?.[0];
+  if (f && f.type.startsWith("image/")) void loadEnvironmentFile(f);
 });
 
 window.addEventListener("resize", onResize);

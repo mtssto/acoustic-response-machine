@@ -1,3 +1,4 @@
+import type { ImageEnvironment } from "../environment/imageMap";
 import type {
   AcousticEvent,
   Connection,
@@ -78,7 +79,12 @@ export class GrowthEngine {
   private growthMeter = 0;
   private tick = 0;
   private lastFocus = { x: 0, y: 0 };
+  private env: ImageEnvironment | null = null;
   bounds: GrowthBounds = { left: 0, right: 1, top: 0, bottom: 1 };
+
+  setEnvironment(env: ImageEnvironment | null) {
+    this.env = env;
+  }
 
   reset(scene: StructureScene, bounds: GrowthBounds) {
     this.bounds = { ...bounds };
@@ -252,15 +258,41 @@ export class GrowthEngine {
       (ev.type === "IMPACT" || ev.type === "TRANSIENT" ? 0.5 : 0) -
       memInf * 0.15; // remembered patterns → slightly more coherent turns
     const turn = (rnd(this.tick + 3) - 0.5) * 2 * Math.max(0.2, turnMax);
-    const angle = ep.angle + turn;
+    let angle = ep.angle + turn;
 
-    const length =
+    // Phase 7: bias toward image edge tangents / interest points
+    if (this.env?.active) {
+      const sample = this.env.sample(ep.x, ep.y);
+      if (sample && sample.edge > 0.18) {
+        let edgeAng = Math.atan2(sample.dirY, sample.dirX);
+        // Pick tangent orientation closer to current heading
+        const alt = edgeAng + Math.PI;
+        if (angleDiff(angle, alt) < angleDiff(angle, edgeAng)) edgeAng = alt;
+        const blend = 0.3 + sample.edge * 0.45;
+        angle = lerpAngle(angle, edgeAng, blend);
+      }
+      const poi = this.env.nearestInterest(ep.x, ep.y);
+      if (poi && sample && sample.interest > 0.2) {
+        const toPoi = Math.atan2(poi.y - ep.y, poi.x - ep.x);
+        angle = lerpAngle(angle, toPoi, 0.15 + sample.interest * 0.2);
+      }
+    }
+
+    let length =
       (10 +
         strength * 48 +
         onset * 22 +
         (1 - centroidN) * 8 +
         rnd(this.tick + 5) * 10) *
       (mem?.lengthScale ?? 1);
+
+    if (this.env?.active) {
+      const s2 = this.env.sample(ep.x, ep.y);
+      if (s2) {
+        // Strong edges → slightly longer traces along structure
+        length *= 0.85 + s2.edge * 0.45;
+      }
+    }
 
     let action: StructuralAction =
       (ev.type === "IMPACT" || ev.type === "TRANSIENT") && rnd(this.tick + 7) < branchP
@@ -303,16 +335,21 @@ export class GrowthEngine {
   }
 
   private pickEndpoint(strength: number, onset: number): Endpoint {
-    // Prefer energetic / younger tips with stochastic choice — not always last
     let best = this.frontier[0];
     let bestScore = -1e9;
     for (let i = 0; i < this.frontier.length; i++) {
       const ep = this.frontier[i];
+      let envBoost = 0;
+      if (this.env?.active) {
+        const s = this.env.sample(ep.x, ep.y);
+        if (s) envBoost = s.edge * 0.7 + s.interest * 0.5;
+      }
       const score =
         ep.energy * 0.9 +
         strength * 0.3 +
         onset * 0.2 -
         ep.age * 0.08 +
+        envBoost +
         rnd(this.tick * 17 + i) * (0.55 + onset * 0.5);
       if (score > bestScore) {
         bestScore = score;
@@ -559,6 +596,20 @@ export class GrowthEngine {
 
 function clamp01(v: number): number {
   return Math.max(0, Math.min(1, v));
+}
+
+function angleDiff(a: number, b: number): number {
+  let d = a - b;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return Math.abs(d);
+}
+
+function lerpAngle(a: number, b: number, t: number): number {
+  let d = b - a;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return a + d * t;
 }
 
 /** Deterministic pseudo-random in [0,1) from integer seed — repeatable behavior, non-identical detail. */
