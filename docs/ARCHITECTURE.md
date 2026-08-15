@@ -14,8 +14,9 @@ AUDIO CAPTURE → ANALYSIS → AcousticEvent → Interpretation
 | AcousticMeasurement | Raw audio features | Phase 2 |
 | AcousticEvent | Interpreted events | Phase 3 |
 | StructuralEvent | Visual growth actions | Phase 4 |
+| MachineState / MachineVitals | Continuous internal state | Phase 5 |
 | StructureScene | SquareNode, Junction, Marker, Module, Connection, Root | Phase 1–4 |
-| Renderer | Grid + technical primitives + HUD | Phase 1–4 |
+| Renderer | Grid + technical primitives + HUD | Phase 1–5 |
 | AudioCapture / AcousticAnalyzer | Mic + metrics | Phase 2 |
 | EventInterpreter | measurement → event | Phase 3 |
 | GrowthEngine | event → structure mutation | Phase 4 |
@@ -29,6 +30,7 @@ AUDIO CAPTURE → ANALYSIS → AcousticEvent → Interpretation
 - `src/audio/analysis.ts` — AcousticMeasurement computation
 - `src/audio/interpret.ts` — AcousticEvent interpretation
 - `src/growth/engine.ts` — StructuralEvent + growth/decay
+- `src/machine/state.ts` — continuous MachineVitals
 - `src/main.ts` — boot + loop
 
 See `docs/GROWTH_RULES.md` for mapping hypotheses.

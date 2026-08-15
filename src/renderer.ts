@@ -1,4 +1,5 @@
 import type { GrowthDebug } from "./growth/engine";
+import type { MachineVitals } from "./machine/state";
 import type {
   AcousticEvent,
   AcousticMeasurement,
@@ -33,6 +34,7 @@ export interface HudFrame {
   measurement: AcousticMeasurement | null;
   event: AcousticEvent | null;
   structural: StructuralEvent | null;
+  machine: MachineVitals | null;
   growthDebug: GrowthDebug | null;
   f0Confidence: number;
   spectrum: Float32Array | null;
@@ -170,7 +172,7 @@ export class CanvasRenderer {
     ctx.fillStyle = C.text;
     ctx.font = "11px Courier New, monospace";
     ctx.fillText(
-      "ACOUSTIC RESPONSE MACHINE  —  SYSTEM SIMULATION  v0.4.1  [GROWTH]",
+      "ACOUSTIC RESPONSE MACHINE  —  SYSTEM SIMULATION  v0.5.0  [MACHINE]",
       18,
       22
     );
@@ -258,21 +260,23 @@ export class CanvasRenderer {
     const ev = hud.event;
     const st = hud.structural;
     const gd = hud.growthDebug;
+    const mv = hud.machine;
     y = this.panel(
       x,
       y + 8,
       w,
       [
         "MACHINE STATE",
-        `Event          ${ev?.type ?? "NONE"}`,
-        `Action         ${st?.action ?? "IDLE"}`,
-        `Confidence     ${ev ? ev.confidence.toFixed(2) : "0.00"}`,
-        `Intensity      ${ev ? ev.intensity.toFixed(2) : "0.00"}`,
-        `Behavior       ${behaviorFromEvent(ev)}`,
-        "Mode           GROWTH",
-        `Frontier       ${gd ? String(gd.frontier).padStart(4) : "   —"}`,
-        `Energy         ${ev ? ev.characteristics.energy.toFixed(2) : "—"}`,
-        "Focus          —",
+        `Event          ${mv?.currentEvent ?? ev?.type ?? "NONE"}`,
+        `Action         ${mv?.currentAction ?? st?.action ?? "IDLE"}`,
+        `Behavior       ${mv?.behavior ?? "STANDBY"}`,
+        `Mode           ${mv?.mode ?? "MACHINE"}`,
+        `Energy         ${mv ? mv.energy.toFixed(2) : "0.00"}`,
+        `Stability      ${mv ? mv.stability.toFixed(2) : "0.00"}`,
+        `Growth         ${mv ? mv.growth.toFixed(2) : "0.00"}`,
+        `Density        ${mv ? mv.density.toFixed(2) : "0.00"}`,
+        `Memory Infl.   ${mv ? mv.memoryInfluence.toFixed(2) : "0.00"}`,
+        `Focus          ${mv?.focus ?? "LOW"}`,
       ],
       false
     );
@@ -287,15 +291,9 @@ export class CanvasRenderer {
         `Angle          ${gd ? `${gd.angleDeg.toFixed(1)}°` : "—"}`,
         `Length         ${gd ? gd.length.toFixed(1) : "—"}`,
         `Branch P       ${gd ? gd.branchProbability.toFixed(3) : "—"}`,
+        `Frontier       ${gd ? String(gd.frontier) : "—"}`,
         `Onset          ${gd ? gd.onset.toFixed(3) : "—"}`,
-        `Centroid       ${
-          gd?.centroid != null
-            ? gd.centroid >= 1000
-              ? `${(gd.centroid / 1000).toFixed(2)} kHz`
-              : `${gd.centroid.toFixed(0)} Hz`
-            : "—"
-        }`,
-        ...hud.logLines.slice(-4),
+        ...hud.logLines.slice(-3),
       ],
       false
     );
@@ -706,22 +704,4 @@ function fmtHz(v: number | null): string {
 function fmtUnit(v: number | null): string {
   if (v == null) return "UNAVAILABLE";
   return v.toFixed(3);
-}
-
-function behaviorFromEvent(ev: AcousticEvent | null): string {
-  if (!ev) return "STANDBY";
-  switch (ev.type) {
-    case "SILENCE":
-      return "IDLE";
-    case "IMPACT":
-      return "STRIKE";
-    case "TRANSIENT":
-      return "SPIKE";
-    case "SUSTAIN":
-      return "HOLD";
-    case "NOISE":
-      return "DIFFUSE";
-    default:
-      return "LISTEN";
-  }
 }

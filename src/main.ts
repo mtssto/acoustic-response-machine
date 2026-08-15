@@ -2,6 +2,7 @@ import { AcousticAnalyzer } from "./audio/analysis";
 import { AudioCapture } from "./audio/capture";
 import { EventInterpreter } from "./audio/interpret";
 import { createGrowthSeed, GrowthEngine } from "./growth/engine";
+import { MachineState } from "./machine/state";
 import { CanvasRenderer } from "./renderer";
 import {
   countStructure,
@@ -20,6 +21,7 @@ const capture = new AudioCapture();
 const analyzer = new AcousticAnalyzer();
 const interpreter = new EventInterpreter();
 const growth = new GrowthEngine();
+const machine = new MachineState();
 
 let scene: StructureScene = { elements: [], connections: [], ghosts: [] };
 const t0 = performance.now();
@@ -45,7 +47,7 @@ let lastPtr = { x: 0, y: 0 };
 
 const logLines: string[] = [
   "00:00:00  FOUNDATION BOOT",
-  "00:00:00  ORGANIC GROWTH READY",
+  "00:00:00  MACHINE STATE ONLINE",
   "00:00:00  AUDIO OFFLINE",
   "00:00:00  CLICK TO ENABLE MIC",
 ];
@@ -60,6 +62,7 @@ function rebuild() {
   const seed = createGrowthSeed(renderer.width, renderer.height);
   scene = seed.scene;
   growth.reset(scene, seed.bounds);
+  machine.reset();
   const root = scene.elements.find((e) => e.kind === "root");
   if (root) {
     renderer.camera.x = root.x;
@@ -131,6 +134,9 @@ function frame(now: number) {
     structural = growth.step(scene, null, dt);
   }
 
+  const counts = countStructure(scene, growth.getMeters());
+  const vitals = machine.update(dt, event, structural, counts);
+
   if (followGrowth && !dragging) {
     const focus = growth.getFocusPoint();
     renderer.camera.x += (focus.x - renderer.camera.x) * 0.05;
@@ -141,7 +147,7 @@ function frame(now: number) {
   renderer.drawGrid();
   renderer.drawScene(scene, t);
   renderer.drawInstrument({
-    counts: countStructure(scene, growth.getMeters()),
+    counts,
     runtimeSec: t,
     fps,
     audioStatus: capture.status,
@@ -149,6 +155,7 @@ function frame(now: number) {
     measurement,
     event,
     structural,
+    machine: vitals,
     growthDebug: growth.debug,
     f0Confidence,
     spectrum,
